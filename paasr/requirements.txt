@@ -3,9 +3,11 @@ gradio==4.44.1
 fastapi==0.115.6
 starlette==0.41.3
 pydantic==2.10.6
+huggingface_hub==0.36.2
 
 # Google Telugu speech recognition and multi-format audio decoding
 SpeechRecognition==3.14.3
+av==12.3.0
 numpy==1.26.4
 
 # Local English speech output
@@ -14,3 +16,4 @@ pyttsx3==2.91
 # Application utilities
 python-dotenv==1.0.1
 requests==2.32.3
+// done
