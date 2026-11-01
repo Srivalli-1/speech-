@@ -75,11 +75,42 @@ class GoogleWorkflowTests(unittest.TestCase):
         self.assertIn("0.0.0.0 19321 False", result.stdout)
 
     def test_render_blueprint_points_to_nested_application(self) -> None:
-        render_config = Path(__file__).resolve().parents[2] / "render.yaml"
-        contents = render_config.read_text(encoding="utf-8")
-        self.assertIn("rootDir: paasr", contents)
-        self.assertIn("pip install -r requirements.txt", contents)
-        self.assertIn("startCommand: python app.py", contents)
+        repository_root = Path(__file__).resolve().parents[2]
+        render_config = (repository_root / "render.yaml").read_text(
+            encoding="utf-8"
+        )
+        python_version = (repository_root / ".python-version").read_text(
+            encoding="utf-8"
+        ).strip()
+        requirements = (
+            Path(__file__).resolve().parents[1] / "requirements.txt"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("rootDir: paasr", render_config)
+        self.assertIn("pip install -r requirements.txt", render_config)
+        self.assertIn("startCommand: python app.py", render_config)
+        self.assertIn("value: 3.11.11", render_config)
+        self.assertEqual(python_version, "3.11.11")
+        for package in (
+            "gradio==4.44.1",
+            "fastapi==0.115.6",
+            "starlette==0.41.3",
+            "pydantic==2.10.6",
+            "SpeechRecognition==3.14.3",
+            "av==12.3.0",
+            "numpy==1.26.4",
+            "pyttsx3==2.91",
+        ):
+            self.assertIn(package, requirements)
+        for package in (
+            "pydantic-core==",
+            "gradio-client==",
+            "click==",
+            "tqdm==",
+            "filelock==",
+            "packaging==",
+        ):
+            self.assertNotIn(package, requirements)
 
     def test_ui_is_a_single_translator_page_with_existing_voice_outputs(self) -> None:
         ui = app.build_app()

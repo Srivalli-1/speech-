@@ -65,12 +65,14 @@ Render Blueprint deployments. For a manually created Web Service, use:
 | Start Command | `python app.py` |
 | Instance | Free is suitable for a demo; choose more RAM if it runs out of memory |
 
-Render should provide `PORT` automatically. Set these environment variables:
+The build command installs eSpeak for local Linux text-to-speech, then installs
+the Python dependencies. Render should provide `PORT` automatically. Set these
+environment variables:
 
 ```text
 GRADIO_SERVER_NAME=0.0.0.0
 GRADIO_IN_BROWSER=false
-PYTHON_VERSION=3.12.10
+PYTHON_VERSION=3.11.11
 ```
 
 The application binds to `0.0.0.0` and Render's `PORT` when available; the
@@ -80,6 +82,10 @@ may spin down while idle, has limited memory, and uses ephemeral storage:
 SQLite survey data and generated temporary audio should not be treated as
 persistent. Push the latest code to the selected Git branch before creating
 the Render service.
+
+The repository-root `.python-version` also selects Python 3.11. The
+`PYTHON_VERSION` environment variable in `render.yaml` takes precedence for
+Blueprint deployments.
 
 ## Tests
 
