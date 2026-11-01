@@ -6,7 +6,6 @@ pydantic==2.10.6
 
 # Google Telugu speech recognition and multi-format audio decoding
 SpeechRecognition==3.14.3
-av==12.3.0
 numpy==1.26.4
 
 # Local English speech output
