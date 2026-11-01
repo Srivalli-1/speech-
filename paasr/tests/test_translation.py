@@ -130,6 +130,13 @@ class GoogleWorkflowTests(unittest.TestCase):
             "english-output",
             "english-audio",
         }.issubset(element_ids))
+        audio_component = next(
+            component
+            for component in components
+            if component.get("props", {}).get("elem_id") == "english-audio"
+        )
+        self.assertEqual(audio_component["props"]["label"], "English Audio Output")
+        self.assertTrue(audio_component["props"]["show_download_button"])
 
     def _make_wav(self, directory: str) -> Path:
         path = Path(directory) / "telugu.wav"
@@ -331,7 +338,7 @@ class GoogleWorkflowTests(unittest.TestCase):
         ) as translate, patch(
             "modules.tts.synthesise_speech",
             return_value=("english.wav", "Local TTS"),
-        ):
+        ) as synthesise:
             english, audio_path, status = app.run_voice_translation(
                 corrected_transcript, language, progress=noop_progress
             )
@@ -342,6 +349,27 @@ class GoogleWorkflowTests(unittest.TestCase):
         self.assertEqual(english, "I have a stomach ache.")
         self.assertEqual(audio_path, "english.wav")
         self.assertIn("Google Translate", status)
+        self.assertIn("Local TTS", status)
+        synthesise.assert_called_once_with("I have a stomach ache.")
+
+    def test_tts_failure_keeps_translation_and_reports_warning(self) -> None:
+        with patch(
+            "modules.translator.translate_text",
+            return_value=("I need water.", "Google Translate"),
+        ), patch(
+            "modules.tts.synthesise_speech",
+            side_effect=RuntimeError("No compatible speech engine is installed."),
+        ) as synthesise:
+            english, audio_path, status = app.run_voice_translation(
+                "నాకు నీళ్లు కావాలి", "te",
+                progress=lambda *_args, **_kwargs: None,
+            )
+
+        synthesise.assert_called_once_with("I need water.")
+        self.assertEqual(english, "I need water.")
+        self.assertIsNone(audio_path)
+        self.assertIn("English audio could not be generated", status)
+        self.assertIn("No compatible speech engine is installed", status)
 
     def test_text_translation_callback_displays_google_result(self) -> None:
         with patch(

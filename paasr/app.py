@@ -292,9 +292,10 @@ def build_app() -> gr.Blocks:
                         elem_id="english-output",
                     )
                     audio_output = gr.Audio(
-                        label="Listen to English",
+                        label="English Audio Output",
                         type="filepath",
                         interactive=False,
+                        show_download_button=True,
                         elem_id="english-audio",
                     )
 
