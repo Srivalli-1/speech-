@@ -88,6 +88,7 @@ class GoogleWorkflowTests(unittest.TestCase):
 
         self.assertIn("rootDir: paasr", render_config)
         self.assertIn("pip install -r requirements.txt", render_config)
+        self.assertIn("apt-get install -y espeak-ng", render_config)
         self.assertIn("startCommand: python app.py", render_config)
         self.assertIn("value: 3.11.11", render_config)
         self.assertEqual(python_version, "3.11.11")
@@ -99,7 +100,7 @@ class GoogleWorkflowTests(unittest.TestCase):
             "SpeechRecognition==3.14.3",
             "av==12.3.0",
             "numpy==1.26.4",
-            "pyttsx3==2.91",
+            "pyttsx3==2.91; platform_system == \"Windows\"",
         ):
             self.assertIn(package, requirements)
         for package in (
@@ -372,35 +373,28 @@ class GoogleWorkflowTests(unittest.TestCase):
         self.assertIn("English audio could not be generated", status)
         self.assertIn("No compatible speech engine is installed", status)
 
-    def test_linux_tts_uses_espeak_and_returns_a_valid_wav(self) -> None:
-        class FakeEngine:
-            output_path = None
+    def test_linux_tts_uses_espeak_ng_and_returns_a_valid_wav(self) -> None:
+        def fake_run(command, **kwargs):
+            output_path = command[command.index("-w") + 1]
+            with wave.open(output_path, "wb") as audio_file:
+                audio_file.setnchannels(1)
+                audio_file.setsampwidth(2)
+                audio_file.setframerate(16_000)
+                audio_file.writeframes(b"\x01\x00" * 160)
+            self.assertEqual(kwargs["input"], "I need water.")
+            self.assertTrue(kwargs["capture_output"])
+            self.assertTrue(kwargs["text"])
+            return subprocess.CompletedProcess(command, 0, "", "")
 
-            def setProperty(self, _name, _value):
-                return None
-
-            def save_to_file(self, _text, output_path):
-                self.output_path = output_path
-
-            def runAndWait(self):
-                with wave.open(self.output_path, "wb") as audio_file:
-                    audio_file.setnchannels(1)
-                    audio_file.setsampwidth(2)
-                    audio_file.setframerate(16_000)
-                    audio_file.writeframes(b"\x01\x00" * 160)
-
-            def stop(self):
-                return None
-
-        engine = FakeEngine()
-        fake_pyttsx3 = SimpleNamespace(init=lambda **kwargs: engine)
-        with patch.dict(sys.modules, {"pyttsx3": fake_pyttsx3}), patch.object(
+        with patch.object(tts, "_cleanup_last_temp"), patch.object(
             tts.platform, "system", return_value="Linux"
         ), patch.object(
-            tts.shutil, "which", return_value="/usr/bin/espeak"
-        ), patch.object(
-            tts, "_cleanup_last_temp"
-        ):
+            tts.shutil,
+            "which",
+            side_effect=lambda name: (
+                "/usr/bin/espeak-ng" if name == "espeak-ng" else "/usr/bin/espeak"
+            ),
+        ), patch.object(tts.subprocess, "run", side_effect=fake_run) as run:
             audio_path, info = tts.synthesise_speech("I need water.")
 
         path = Path(audio_path)
@@ -408,20 +402,67 @@ class GoogleWorkflowTests(unittest.TestCase):
             self.assertTrue(path.is_file())
             with wave.open(str(path), "rb") as generated_audio:
                 self.assertGreater(generated_audio.getnframes(), 0)
-            self.assertIn("Linux speech engine", info)
+            self.assertIn("eSpeak (Linux speech engine)", info)
             self.assertIn("Audio:", info)
             self.assertEqual(tts._last_tts_file, path)
+            self.assertEqual(
+                run.call_args.args[0],
+                [
+                    "/usr/bin/espeak-ng",
+                    "-v",
+                    "en-us",
+                    "-s",
+                    str(config.TTS_PYTTSX3_RATE),
+                    "-w",
+                    str(path),
+                    "--stdin",
+                ],
+            )
         finally:
             path.unlink(missing_ok=True)
             tts._last_tts_file = None
 
-    def test_linux_tts_fails_if_espeak_is_missing(self) -> None:
-        fake_pyttsx3 = SimpleNamespace(init=lambda **_kwargs: self.fail("unexpected init"))
-        with patch.dict(sys.modules, {"pyttsx3": fake_pyttsx3}), patch.object(
-            tts.platform, "system", return_value="Linux"
-        ), patch.object(tts.shutil, "which", return_value=None):
-            with self.assertRaisesRegex(RuntimeError, "eSpeak executable is missing"):
-                tts._synthesise_pyttsx3("I need water.")
+    def test_linux_tts_reports_missing_espeak(self) -> None:
+        with patch.object(tts.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "Neither espeak-ng nor espeak"):
+                tts._synthesise_espeak("I need water.")
+
+    def test_linux_tts_reports_espeak_failure_and_removes_partial_output(self) -> None:
+        def failed_run(command, **_kwargs):
+            Path(command[command.index("-w") + 1]).write_bytes(b"partial output")
+            return subprocess.CompletedProcess(
+                command, 1, "", "voice data missing"
+            )
+
+        with patch.object(
+            tts.shutil, "which", return_value="/usr/bin/espeak-ng"
+        ), patch.object(tts.subprocess, "run", side_effect=failed_run):
+            with self.assertRaisesRegex(RuntimeError, "voice data missing"):
+                tts._synthesise_espeak("I need water.")
+
+    def test_linux_tts_rejects_empty_successful_output(self) -> None:
+        created_paths = []
+        make_temp_path = tts._make_temp_path
+
+        def make_temp_path_and_track(suffix):
+            path = make_temp_path(suffix)
+            created_paths.append(path)
+            return path
+
+        with patch.object(
+            tts.shutil, "which", return_value="/usr/bin/espeak-ng"
+        ), patch.object(
+            tts, "_make_temp_path", side_effect=make_temp_path_and_track
+        ), patch.object(
+            tts.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess([], 0, "", ""),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "did not create an audio file"):
+                tts._synthesise_espeak("I need water.")
+
+        self.assertEqual(len(created_paths), 1)
+        self.assertFalse(created_paths[0].exists())
 
     def test_text_translation_callback_displays_google_result(self) -> None:
         with patch(
