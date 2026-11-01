@@ -134,7 +134,7 @@ def run_voice_translation(
         audio_out, tts_info = synthesise_speech(english_text)
         status_parts.append(f"[OK] {tts_info}")
     except (ValueError, RuntimeError) as exc:
-        logger.warning("English speech synthesis failed: %s", exc)
+        logger.exception("English speech synthesis failed after translation.")
         status_parts.append(f"[WARN] English audio could not be generated: {exc}")
 
     progress(1.0, desc="Translation complete.")

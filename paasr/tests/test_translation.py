@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import app
 import config
-from modules import asr, translator
+from modules import asr, translator, tts
 from modules.utils import AudioValidationError
 
 
@@ -136,6 +136,7 @@ class GoogleWorkflowTests(unittest.TestCase):
             if component.get("props", {}).get("elem_id") == "english-audio"
         )
         self.assertEqual(audio_component["props"]["label"], "English Audio Output")
+        self.assertEqual(audio_component["props"]["type"], "filepath")
         self.assertTrue(audio_component["props"]["show_download_button"])
 
     def _make_wav(self, directory: str) -> Path:
@@ -370,6 +371,57 @@ class GoogleWorkflowTests(unittest.TestCase):
         self.assertIsNone(audio_path)
         self.assertIn("English audio could not be generated", status)
         self.assertIn("No compatible speech engine is installed", status)
+
+    def test_linux_tts_uses_espeak_and_returns_a_valid_wav(self) -> None:
+        class FakeEngine:
+            output_path = None
+
+            def setProperty(self, _name, _value):
+                return None
+
+            def save_to_file(self, _text, output_path):
+                self.output_path = output_path
+
+            def runAndWait(self):
+                with wave.open(self.output_path, "wb") as audio_file:
+                    audio_file.setnchannels(1)
+                    audio_file.setsampwidth(2)
+                    audio_file.setframerate(16_000)
+                    audio_file.writeframes(b"\x01\x00" * 160)
+
+            def stop(self):
+                return None
+
+        engine = FakeEngine()
+        fake_pyttsx3 = SimpleNamespace(init=lambda **kwargs: engine)
+        with patch.dict(sys.modules, {"pyttsx3": fake_pyttsx3}), patch.object(
+            tts.platform, "system", return_value="Linux"
+        ), patch.object(
+            tts.shutil, "which", return_value="/usr/bin/espeak"
+        ), patch.object(
+            tts, "_cleanup_last_temp"
+        ):
+            audio_path, info = tts.synthesise_speech("I need water.")
+
+        path = Path(audio_path)
+        try:
+            self.assertTrue(path.is_file())
+            with wave.open(str(path), "rb") as generated_audio:
+                self.assertGreater(generated_audio.getnframes(), 0)
+            self.assertIn("Linux speech engine", info)
+            self.assertIn("Audio:", info)
+            self.assertEqual(tts._last_tts_file, path)
+        finally:
+            path.unlink(missing_ok=True)
+            tts._last_tts_file = None
+
+    def test_linux_tts_fails_if_espeak_is_missing(self) -> None:
+        fake_pyttsx3 = SimpleNamespace(init=lambda **_kwargs: self.fail("unexpected init"))
+        with patch.dict(sys.modules, {"pyttsx3": fake_pyttsx3}), patch.object(
+            tts.platform, "system", return_value="Linux"
+        ), patch.object(tts.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, "eSpeak executable is missing"):
+                tts._synthesise_pyttsx3("I need water.")
 
     def test_text_translation_callback_displays_google_result(self) -> None:
         with patch(

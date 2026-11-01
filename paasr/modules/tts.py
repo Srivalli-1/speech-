@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import os
+import platform
+import shutil
 import tempfile
 import time
+import wave
 from pathlib import Path
 from typing import Tuple
 
@@ -38,22 +41,47 @@ def _synthesise_pyttsx3(text: str) -> Path:
     import pyttsx3
 
     out_path = _make_temp_path(".wav")
+    engine = None
     try:
-        engine = pyttsx3.init()
+        if platform.system() == "Linux":
+            if shutil.which("espeak") is None:
+                raise RuntimeError(
+                    "The Linux eSpeak executable is missing. Install "
+                    "espeak, espeak-data, and libespeak1 in the Render build."
+                )
+            engine = pyttsx3.init(driverName="espeak")
+        else:
+            engine = pyttsx3.init()
         engine.setProperty("rate", config.TTS_PYTTSX3_RATE)
         engine.setProperty("volume", config.TTS_PYTTSX3_VOLUME)
         engine.save_to_file(text, str(out_path))
         engine.runAndWait()
-        try:
-            engine.stop()
-        except Exception:
-            logger.exception("Could not stop the pyttsx3 engine after synthesis.")
-        logger.info("Local pyttsx3 synthesis complete: %s", out_path.name)
-        return out_path
     except Exception as exc:
-        if out_path.exists():
-            out_path.unlink(missing_ok=True)
-        raise RuntimeError(f"Local pyttsx3 synthesis failed: {exc}") from exc
+        out_path.unlink(missing_ok=True)
+        raise RuntimeError(f"pyttsx3 synthesis failed: {exc}") from exc
+    finally:
+        if engine is not None:
+            try:
+                engine.stop()
+            except Exception:
+                logger.exception("Could not stop the pyttsx3 engine.")
+
+    if not out_path.is_file() or out_path.stat().st_size == 0:
+        out_path.unlink(missing_ok=True)
+        raise RuntimeError(
+            "pyttsx3 completed without creating an audio file. "
+            "Check that the Linux eSpeak engine and voice data are installed."
+        )
+
+    try:
+        with wave.open(str(out_path), "rb") as audio_file:
+            if audio_file.getnframes() == 0:
+                raise wave.Error("generated audio contains no frames")
+    except (OSError, EOFError, wave.Error) as exc:
+        out_path.unlink(missing_ok=True)
+        raise RuntimeError(f"pyttsx3 created an invalid WAV file: {exc}") from exc
+
+    return out_path
 
 
 def synthesise_speech(english_text: str) -> Tuple[str, str]:
@@ -68,16 +96,21 @@ def synthesise_speech(english_text: str) -> Tuple[str, str]:
     try:
         audio_path = _synthesise_pyttsx3(english_text)
     except Exception as exc:
-        logger.exception("Local pyttsx3 synthesis failed.")
+        logger.exception(
+            "English TTS failed on %s for %d characters.",
+            platform.system(),
+            len(english_text),
+        )
         raise RuntimeError(
-            "Local speech synthesis failed. Ensure pyttsx3 and a supported "
-            "speech engine are available (Windows SAPI5 or Linux eSpeak). "
+            "English audio generation failed. On Render, verify the build "
+            "installed espeak, espeak-data, and libespeak1. "
             f"Detail: {exc}"
         ) from exc
 
     _last_tts_file = audio_path
     info = (
-        f"TTS: pyttsx3 (local platform voice) | "
+        f"TTS: pyttsx3 ({platform.system()} speech engine) | "
+        f"Audio: {audio_path.stat().st_size} bytes | "
         f"Synthesis time: {time.time() - started:.1f}s"
     )
     logger.info(info)

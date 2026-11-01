@@ -61,12 +61,13 @@ Render Blueprint deployments. For a manually created Web Service, use:
 | Root Directory | `paasr` |
 | Runtime | Python 3 |
 | Branch | `main` |
-| Build Command | `apt-get update && apt-get install -y espeak libespeak1 && pip install -r requirements.txt` |
+| Build Command | `apt-get update && apt-get install -y espeak espeak-data libespeak1 && pip install -r requirements.txt` |
 | Start Command | `python app.py` |
 | Instance | Free is suitable for a demo; choose more RAM if it runs out of memory |
 
-The build command installs eSpeak for local Linux text-to-speech, then installs
-the Python dependencies. Render should provide `PORT` automatically. Set these
+The build command installs the eSpeak executable, English voice data, and
+shared library required by pyttsx3 on Linux before installing the Python
+dependencies. Render should provide `PORT` automatically. Set these
 environment variables:
 
 ```text
@@ -76,8 +77,9 @@ PYTHON_VERSION=3.11.11
 ```
 
 The application binds to `0.0.0.0` and Render's `PORT` when available; the
-local default port is `10000`. The `espeak`
-packages enable pyttsx3 audio synthesis on a Linux host. The free instance
+local default port is `10000`. pyttsx3 explicitly uses the eSpeak driver on
+Linux, and the app verifies that it returned a non-empty WAV file before
+displaying the audio player. The free instance
 may spin down while idle, has limited memory, and uses ephemeral storage:
 SQLite survey data and generated temporary audio should not be treated as
 persistent. Push the latest code to the selected Git branch before creating

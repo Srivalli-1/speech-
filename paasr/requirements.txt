@@ -10,7 +10,7 @@ SpeechRecognition==3.14.3
 av==12.3.0
 numpy==1.26.4
 
-# Local English speech output
+# Local English speech output; Render installs eSpeak system packages in render.yaml.
 pyttsx3==2.91
 
 # Application utilities

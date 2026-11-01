@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     rootDir: paasr
-    buildCommand: apt-get update && apt-get install -y espeak libespeak1 && pip install -r requirements.txt
+    buildCommand: apt-get update && apt-get install -y espeak espeak-data libespeak1 && pip install -r requirements.txt
     startCommand: python app.py
     envVars:
       - key: PYTHON_VERSION
