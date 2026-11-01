@@ -23,7 +23,7 @@ echo ============================================================
 echo  PAASR -- Telugu-to-English Voice Translator
 echo ============================================================
 echo  Starting application ...
-echo  Open http://127.0.0.1:7860 in your browser.
+echo  Open http://127.0.0.1:10000 in your browser.
 echo.
 echo  Google Speech Recognition and Google Translate require internet access.
 echo  Speech audio and transcript text will be sent to Google.

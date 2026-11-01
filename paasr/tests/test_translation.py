@@ -29,6 +29,27 @@ class FakeResponse:
 
 
 class GoogleWorkflowTests(unittest.TestCase):
+    def test_default_server_binding_matches_render(self) -> None:
+        project_dir = Path(__file__).resolve().parents[1]
+        environment = os.environ.copy()
+        environment.pop("PORT", None)
+        environment.pop("GRADIO_SERVER_NAME", None)
+        environment.pop("GRADIO_SERVER_PORT", None)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import config; print(config.GRADIO_SERVER_NAME, "
+                "config.GRADIO_SERVER_PORT)",
+            ],
+            cwd=project_dir,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertIn("0.0.0.0 10000", result.stdout)
+
     def test_render_environment_controls_host_and_port(self) -> None:
         project_dir = Path(__file__).resolve().parents[1]
         environment = os.environ.copy()
@@ -52,6 +73,13 @@ class GoogleWorkflowTests(unittest.TestCase):
             text=True,
         )
         self.assertIn("0.0.0.0 19321 False", result.stdout)
+
+    def test_render_blueprint_points_to_nested_application(self) -> None:
+        render_config = Path(__file__).resolve().parents[2] / "render.yaml"
+        contents = render_config.read_text(encoding="utf-8")
+        self.assertIn("rootDir: paasr", contents)
+        self.assertIn("pip install -r requirements.txt", contents)
+        self.assertIn("startCommand: python app.py", contents)
 
     def test_ui_is_a_single_translator_page_with_existing_voice_outputs(self) -> None:
         ui = app.build_app()

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: paasr-translator
+    runtime: python
+    plan: free
+    rootDir: paasr
+    buildCommand: apt-get update && apt-get install -y espeak libespeak1 && pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: GRADIO_SERVER_NAME
+        value: 0.0.0.0
+      - key: GRADIO_IN_BROWSER
+        value: "false"

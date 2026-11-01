@@ -30,7 +30,7 @@ internet access.
    .\.venv\Scripts\python.exe app.py
    ```
 
-4. Open <http://127.0.0.1:7860>.
+4. Open <http://127.0.0.1:10000>.
 5. On the single translator page, record or upload Telugu audio, click **Transcribe Telugu**,
    review or edit the Telugu transcript, then click
    **Translate to English**. Gradio shows the microphone waveform while recording.
@@ -52,8 +52,9 @@ English, Hindi, and Telugu in either direction when source and target differ.
 
 ## Deploy to Render
 
-The Git repository contains the app inside the `paasr/` subdirectory. In
-Render's **New Web Service** form, use:
+The Git repository contains the app and `requirements.txt` inside the `paasr/`
+subdirectory. The repository-root `render.yaml` configures this path for
+Render Blueprint deployments. For a manually created Web Service, use:
 
 | Setting | Value |
 |---|---|
@@ -72,7 +73,8 @@ GRADIO_IN_BROWSER=false
 PYTHON_VERSION=3.12.10
 ```
 
-The application binds to Render's `PORT` when available. The `espeak`
+The application binds to `0.0.0.0` and Render's `PORT` when available; the
+local default port is `10000`. The `espeak`
 packages enable pyttsx3 audio synthesis on a Linux host. The free instance
 may spin down while idle, has limited memory, and uses ephemeral storage:
 SQLite survey data and generated temporary audio should not be treated as

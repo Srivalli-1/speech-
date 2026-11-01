@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import socket
 from pathlib import Path
 
@@ -382,7 +383,12 @@ def build_app() -> gr.Blocks:
 
 
 if __name__ == "__main__":
-    port = _find_free_port(config.GRADIO_SERVER_PORT)
+    # Render routes traffic to PORT; never silently switch to another port there.
+    port = (
+        config.GRADIO_SERVER_PORT
+        if os.getenv("PORT") is not None
+        else _find_free_port(config.GRADIO_SERVER_PORT)
+    )
     if port != config.GRADIO_SERVER_PORT:
         logger.warning(
             "Port %d is in use; using %d instead.",

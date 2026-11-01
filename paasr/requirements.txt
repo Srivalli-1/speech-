@@ -1,4 +1,4 @@
-# PAASR Windows runtime dependencies. Google speech and translation need internet.
+# PAASR Windows/Linux runtime dependencies. Google speech and translation need internet.
 
 # Web UI
 gradio==4.44.1

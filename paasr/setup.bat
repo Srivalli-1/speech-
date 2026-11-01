@@ -112,7 +112,7 @@ echo  Setup complete!
 echo.
 echo  NEXT STEPS:
 echo    1. Double-click  run.bat  to start the app.
-echo    2. Open http://127.0.0.1:7860 in your browser.
+echo    2. Open http://127.0.0.1:10000 in your browser.
 echo.
 echo  INTERNET NOTE:
 echo    Google Speech Recognition and Google Translate require internet access.
