@@ -405,5 +405,5 @@ if __name__ == "__main__":
         server_port=port,
         share=config.GRADIO_SHARE,
         show_error=True,
-        inbrowser=True,
+        inbrowser=config.GRADIO_IN_BROWSER,
     )

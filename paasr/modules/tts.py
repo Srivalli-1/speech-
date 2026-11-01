@@ -1,4 +1,4 @@
-"""Local text-to-speech for English output using Windows SAPI5."""
+"""Local text-to-speech for English output using the platform speech engine."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def _make_temp_path(suffix: str) -> Path:
 
 
 def _synthesise_pyttsx3(text: str) -> Path:
-    """Synthesize speech locally and save it as a WAV file."""
+    """Synthesize speech locally with the platform's installed engine."""
     import pyttsx3
 
     out_path = _make_temp_path(".wav")
@@ -70,13 +70,14 @@ def synthesise_speech(english_text: str) -> Tuple[str, str]:
     except Exception as exc:
         logger.exception("Local pyttsx3 synthesis failed.")
         raise RuntimeError(
-            "Local speech synthesis failed. Ensure pyttsx3 and a Windows "
-            f"SAPI5 voice are available. Detail: {exc}"
+            "Local speech synthesis failed. Ensure pyttsx3 and a supported "
+            "speech engine are available (Windows SAPI5 or Linux eSpeak). "
+            f"Detail: {exc}"
         ) from exc
 
     _last_tts_file = audio_path
     info = (
-        f"TTS: pyttsx3 (local Windows SAPI5) | "
+        f"TTS: pyttsx3 (local platform voice) | "
         f"Synthesis time: {time.time() - started:.1f}s"
     )
     logger.info(info)

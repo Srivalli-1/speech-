@@ -51,7 +51,10 @@ TTS_PYTTSX3_VOLUME: float = 0.9
 
 # ── Gradio server ─────────────────────────────────────────────────────────────
 GRADIO_SERVER_NAME: str = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
-GRADIO_SERVER_PORT: int = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
+GRADIO_SERVER_PORT: int = int(
+    os.getenv("PORT", os.getenv("GRADIO_SERVER_PORT", "7860"))
+)
+GRADIO_IN_BROWSER: bool = os.getenv("GRADIO_IN_BROWSER", "true").lower() == "true"
 GRADIO_SHARE: bool = os.getenv("GRADIO_SHARE", "false").lower() == "true"
 
 # ── App metadata ──────────────────────────────────────────────────────────────

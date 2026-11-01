@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -27,6 +29,30 @@ class FakeResponse:
 
 
 class GoogleWorkflowTests(unittest.TestCase):
+    def test_render_environment_controls_host_and_port(self) -> None:
+        project_dir = Path(__file__).resolve().parents[1]
+        environment = os.environ.copy()
+        environment.update({
+            "PORT": "19321",
+            "GRADIO_SERVER_PORT": "7860",
+            "GRADIO_SERVER_NAME": "0.0.0.0",
+            "GRADIO_IN_BROWSER": "false",
+        })
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import config; print(config.GRADIO_SERVER_NAME, "
+                "config.GRADIO_SERVER_PORT, config.GRADIO_IN_BROWSER)",
+            ],
+            cwd=project_dir,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertIn("0.0.0.0 19321 False", result.stdout)
+
     def test_ui_is_a_single_translator_page_with_existing_voice_outputs(self) -> None:
         ui = app.build_app()
         components = ui.config["components"]

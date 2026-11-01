@@ -1,6 +1,6 @@
 # PAASR — Telugu Voice Translator
 
-PAASR is a Windows Gradio app that transcribes Telugu audio, translates the
+PAASR is a Gradio app that transcribes Telugu audio, translates the
 reviewed Telugu transcript into English, and generates English speech.
 
 ## Important privacy and network note
@@ -10,7 +10,7 @@ Translation uses Google Translate with source `te` and target `en`. The
 recording is sent to Google for speech recognition, and the transcript is sent
 to Google for translation. Internet access is required. This app does not ask
 for or store Google API keys. English text-to-speech runs locally through
-Windows SAPI5.
+Windows SAPI5 or Linux eSpeak.
 
 The app uses Google's public web-service endpoints through client libraries;
 these are not a production SLA and may be throttled or changed by Google. Do
@@ -19,7 +19,8 @@ service terms and privacy practices.
 
 ## Windows setup and run
 
-Requirements: Windows 10/11, Python 3.11 or newer, and internet access.
+Requirements: Windows 10/11 or a Linux web host, Python 3.11 or newer, and
+internet access.
 
 1. Open the project folder.
 2. Double-click `setup.bat` once to create `.venv` and install the dependencies.
@@ -48,6 +49,35 @@ English, Hindi, and Telugu in either direction when source and target differ.
 - The transcript remains editable so recognition mistakes can be corrected
   before translation.
 - English TTS errors are non-fatal: the translated text remains available.
+
+## Deploy to Render
+
+The Git repository contains the app inside the `paasr/` subdirectory. In
+Render's **New Web Service** form, use:
+
+| Setting | Value |
+|---|---|
+| Root Directory | `paasr` |
+| Runtime | Python 3 |
+| Branch | `main` |
+| Build Command | `apt-get update && apt-get install -y espeak libespeak1 && pip install -r requirements.txt` |
+| Start Command | `python app.py` |
+| Instance | Free is suitable for a demo; choose more RAM if it runs out of memory |
+
+Render should provide `PORT` automatically. Set these environment variables:
+
+```text
+GRADIO_SERVER_NAME=0.0.0.0
+GRADIO_IN_BROWSER=false
+PYTHON_VERSION=3.12.10
+```
+
+The application binds to Render's `PORT` when available. The `espeak`
+packages enable pyttsx3 audio synthesis on a Linux host. The free instance
+may spin down while idle, has limited memory, and uses ephemeral storage:
+SQLite survey data and generated temporary audio should not be treated as
+persistent. Push the latest code to the selected Git branch before creating
+the Render service.
 
 ## Tests
 
